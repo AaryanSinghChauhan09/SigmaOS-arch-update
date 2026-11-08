@@ -1,9 +1,15 @@
 [package]
-name = "arch-update"
+name = "sigmaos-arch-update"
 version = "0.1.0"
 edition = "2021"
-description = "SigmaOS SigmaOS-arch-update component - Inspired by Arch Linux and Debian"
+description = "Pacman upgrade checker and confirmed Arch update runner for SigmaOS"
 license = "MIT"
 repository = "https://github.com/AaryanSinghChauhan09/SigmaOS-arch-update"
 
-[dependencies]
+[lib]
+name = "sigmaos_arch_update"
+path = "src/lib.rs"
+
+[[bin]]
+name = "arch-update"
+path = "src/main.rs"

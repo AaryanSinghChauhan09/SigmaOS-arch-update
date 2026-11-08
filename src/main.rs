@@ -1,35 +1,51 @@
-use std::env;
-use log::{info, warn, error, debug};
-use anyhow::Result;
-//! SigmaOS-arch-update - SigmaOS Component
-//!
-//! This component is part of the SigmaOS operating system,
-//! inspired by Arch Linux and Debian architecture.
+use sigmaos_arch_update::PacmanUpdateManager;
+use std::io::{self, Write};
 
-use std::process;
-
-fn main() -> Result<()> { {
-    println!("SigmaOS SigmaOS-arch-update");
-    println!("Version: 0.1.0");
-    println!("Inspired by: Arch Linux and Debian");
-    println!();
-    println!("This component provides essential functionality for SigmaOS.");
-    println!("Following modular design principles from Arch Linux");
-    println!("and stability focus from Debian.");
-}
-    Ok(())
-
-#[derive(Debug, Clone)]
-struct Config {
-    verbose: bool,
-    dry_run: bool,
+fn main() {
+    if let Err(error) = run() {
+        eprintln!("arch-update: {error}");
+        std::process::exit(1);
+    }
 }
 
-impl Config {
-    fn from_env() -> Self {
-        Config {
-            verbose: env::var("VERBOSE").is_ok(),
-            dry_run: env::var("DRY_RUN").is_ok(),
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let mut apply = false;
+    for arg in std::env::args().skip(1) {
+        match arg.as_str() {
+            "--check" => {}
+            "--apply" => apply = true,
+            "--help" | "-h" => {
+                println!("Usage: arch-update [--check | --apply]\n\n--check  List upgrades available from the local pacman sync databases (default).\n--apply  Ask for confirmation, then run pacman -Syu interactively.");
+                return Ok(());
+            }
+            _ => return Err(format!("unknown argument: {arg}").into()),
         }
     }
+
+    let manager = PacmanUpdateManager::new("pacman");
+    let updates = manager.check_updates()?;
+    if updates.is_empty() {
+        println!("No upgrades are available in the local package databases.");
+    } else {
+        println!("{} upgrade(s) available:", updates.len());
+        for update in &updates {
+            println!(
+                "{}  {} -> {}",
+                update.name, update.current_version, update.new_version
+            );
+        }
+    }
+
+    if apply {
+        print!("Run pacman -Syu now? Type 'yes' to continue: ");
+        io::stdout().flush()?;
+        let mut answer = String::new();
+        io::stdin().read_line(&mut answer)?;
+        if answer.trim() != "yes" {
+            println!("Upgrade cancelled.");
+            return Ok(());
+        }
+        manager.apply_upgrade()?;
+    }
+    Ok(())
 }
